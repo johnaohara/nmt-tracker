@@ -9,6 +9,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -45,8 +46,13 @@ public class NmtUtil {
 
     public List<Long> getPids() {
 
+        Long curPID = ProcessHandle.current().pid();
+        AtomicReference<Long> parentPid = new AtomicReference<>((long) 0);
+        ProcessHandle.current().parent().ifPresent(processHandle -> parentPid.set(processHandle.pid()));
+
         return ProcessHandle.allProcesses()
                 .filter(process -> process.info().commandLine().orElse("").matches(processExpr.orElse("")))
+                .filter(process -> process.pid() != curPID && process.pid() != parentPid.get())
                 .map(process -> process.pid())
                 .collect(Collectors.toList());
     }
