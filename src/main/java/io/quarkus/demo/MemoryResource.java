@@ -8,8 +8,8 @@ import javax.ws.rs.core.MediaType;
 import java.util.List;
 import java.util.Map;
 
-@Path("/nmt")
-public class NmtResource {
+@Path("/process")
+public class MemoryResource {
 
     @Inject
     NmtUtil nmtUtil;
@@ -36,7 +36,7 @@ public class NmtResource {
     }
 
     @GET
-    @Path("/sections")
+    @Path("/nmt")
     @Produces(MediaType.APPLICATION_JSON)
     public Map<String, Long> getNmtData() throws Exception {
         return nmtRepository.getNmtData();
