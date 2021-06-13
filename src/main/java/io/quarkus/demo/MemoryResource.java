@@ -43,11 +43,36 @@ public class MemoryResource {
         return nmtRepository.getNmtData();
     }
 
+
+    @GET
+    @Path("/nmt/stop")
+    @Produces(MediaType.APPLICATION_JSON)
+    public String stopNmt() throws Exception {
+        nmtUtil.stopNmt();
+        return "{Response: ok}";
+    }
+
+
+    @GET
+    @Path("/nmt/start")
+    @Produces(MediaType.APPLICATION_JSON)
+    public String startNmt() throws Exception {
+        nmtUtil.startNmt();
+        return "{Response: ok}";
+    }
+
     @GET
     @Path("/processExpr/{procExpr}")
     @Produces(MediaType.TEXT_PLAIN)
     public String updateProcExpr(@PathParam("procExpr") String newProcExpr){
         nmtUtil.updateProcessExpr(newProcExpr);
         return "new process expr: " + newProcExpr;
+    }
+    @GET
+    @Path("/container/{container}")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String updateDOckerContainer(@PathParam("container") String newContainer){
+        nmtUtil.updateDockerContainer(newContainer);
+        return "new container: " + newContainer;
     }
 }

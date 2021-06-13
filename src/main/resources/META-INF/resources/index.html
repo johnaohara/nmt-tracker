@@ -1,209 +1,281 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<style>
+<head>
+    <meta charset="utf-8">
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
+    <link href="sidebars.css" rel="stylesheet">
 
-body {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  width: 1500px;
-  height: 1000px;
-  position: relative;
-}
+    <style>
+        .bd-placeholder-img {
+            font-size: 1.125rem;
+            text-anchor: middle;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+        }
 
-svg {
-	width: 100%;
-	height: 100%;
-}
+        @media (min-width: 768px) {
+            .bd-placeholder-img-lg {
+                font-size: 3.5rem;
+            }
+        }
+    </style>
 
-path.slice{
-	stroke-width:2px;
-}
-
-polyline{
-	opacity: .3;
-	stroke: black;
-	stroke-width: 2px;
-	fill: none;
-}
-
-</style>
+</head>
 <body>
 
-<script src="https://d3js.org/d3.v3.min.js"></script>
-<script>
-
-var svg = d3.select("body")
-	.append("svg")
-	.append("g")
-
-svg.append("g")
-	.attr("class", "slices");
-svg.append("g")
-    .attr("class", "labels");
-svg.append("g")
-    .attr("class", "total");
-svg.append("g")
-	.attr("class", "lines");
-
-var width = 1500,
-    height = 900,
-	radius = Math.min(width, height) / 2;
-
-var pie = d3.layout.pie()
-	.sort(null)
-	.value(function(d) {
-		return d.value;
-	});
-
-var arc = d3.svg.arc()
-	.outerRadius(radius * 0.8)
-	.innerRadius(radius * 0.4);
-
-var outerArc = d3.svg.arc()
-	.innerRadius(radius * 0.9)
-	.outerRadius(radius * 0.9);
-
-svg.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
-
-// var nmtDomains = ['Java Heap', 'Class', 'Thread', 'Code', 'GC', 'Compiler', 'Internal', 'Other', 'Symbol',
-//     'Native Memory Tracking', 'Shared class space', 'Arena Chunk', 'Logging', 'Arguments', 'Module', 'Synchronizer',
-//     'Safepoint']
-
-var nmtDomains = ['Native Memory Tracking', 'Other', 'Java Heap', 'Symbol',
-    'Safepoint', 'Class', 'GC', 'Compiler', 'Thread', 'Code', 'Internal',
-     'Logging', 'Arguments', 'Module', 'Synchronizer', 'Arguments'
-    ]
+<main>
+    <h1 class="visually-hidden">Sidebars examples</h1>
 
 
-// var key = function(d){ return d.data.label + " (" + d.data.value + " KB)"; };
-var key = function(d){ return d.data.key; };
+    <div class="flex-shrink-0 p-3 bg-white" style="width: 280px;">
+        <a href="/" class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom">
+            <span class="fs-5 fw-semibold">Native Memory Tracking Visualizer</span>
+        </a>
+        <ul class="list-unstyled ps-0">
+            <li class="mb-1">
+                <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="enableTracking" onchange="toggleTracking()">
+                    <label class="custom-control-label" for="enableTracking">Enable NMT Tracking</label>
+                </div>
 
-var color = d3.scale.ordinal()
-	.domain(nmtDomains)
-	.range(["#ffd700",
-"#ffb14e",
-"#fa8775",
-"#ea5f94",
-"#cd34b5",
-"#9d02d7",
-"#0000ff",
-"#000000"]);
+            </li>
+            <li class="border-top my-3"></li>
+            <li class="mb-1">
+                <button class="btn btn-toggle align-items-center rounded" data-bs-toggle="collapse" data-bs-target="#dashboard-collapse" aria-expanded="false">
+                    Runtimes
+                </button>
+                <div class="collapse show" id="dashboard-collapse">
+                    <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+                        <li><button class="btn align-items-center rounded" onclick="changeRuntime('quarkus-todo')">
+                            Quarkus
+                        </button></li>
+                        <li><button class="btn align-items-center rounded" onclick="changeRuntime('wildfly-todo')">
+                            Wildfly 23
+                        </button></li>
+                        <li><button class="btn align-items-center rounded" onclick="changeRuntime('spring-todo')">
+                            Spring Boot
+                        </button></li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
+    </div>
 
-function displayNmtData(nmtData){
-	var labels = color.domain();
-	return labels.map(function(label){
-	    var val = nmtData[label];
-	    // var key = label + " ( " + val + "KB)";
-	    var key = label;
-        return { label: label, key: key,  value: val }
-        // return { label: label, key: label + " (" + nmtData[label] + " KB)",  value: nmtData[label] }
-	});
-}
+    <div class="b-example-divider"></div>
+    <div id="chart" style="height: 1000px;"> </div>
 
-function getData() {
-    d3.json('/process/nmt', function(nmtData) {
-        change(displayNmtData(nmtData));
-    });
-}
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    <script>
 
-getData();
-setInterval(getData, 1000);
+        var toggleTracking = function(){
+            var checkBox = document.getElementById('enableTracking');
+            // alert(checkBox.checked);
+            startStopNmt(checkBox.checked ? 'start' : 'stop')
+        }
+
+        var changeRuntime = function(runtime){
+            const Http = new XMLHttpRequest();
+            const url='/process/container/'+runtime;
+            Http.open("GET", url);
+            Http.send();
+
+            Http.onreadystatechange = (e) => {
+                console.log(Http.responseText)
+            }
+        }
+
+        var startStopNmt = function(startStop){
+            const Http = new XMLHttpRequest();
+            const url='/process/nmt/'+startStop;
+            Http.open("GET", url);
+            Http.send();
+
+            Http.onreadystatechange = (e) => {
+                console.log(Http.responseText)
+            }
+        }
+
+        var svg = d3.select("#chart")
+            .append("svg")
+            .append("g")
+
+        svg.append("g")
+            .attr("class", "slices");
+        svg.append("g")
+            .attr("class", "labels");
+        svg.append("g")
+            .attr("class", "total");
+        svg.append("g")
+            .attr("class", "lines");
+
+        var width = 1200,
+            height = 700,
+            radius = Math.min(width, height) / 2;
+
+        var pie = d3.layout.pie()
+            .sort(null)
+            .value(function(d) {
+                return d.value;
+            });
+
+        var arc = d3.svg.arc()
+            .outerRadius(radius * 0.8)
+            .innerRadius(radius * 0.4);
+
+        var outerArc = d3.svg.arc()
+            .innerRadius(radius * 0.9)
+            .outerRadius(radius * 0.9);
+
+        svg.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+        // var nmtDomains = ['Java Heap', 'Class', 'Thread', 'Code', 'GC', 'Compiler', 'Internal', 'Other', 'Symbol',
+        //     'Native Memory Tracking', 'Shared class space', 'Arena Chunk', 'Logging', 'Arguments', 'Module', 'Synchronizer',
+        //     'Safepoint']
+
+        var nmtDomains = ['Other', 'Java Heap', 'Symbol',
+            'Safepoint', 'Class', 'GC', 'Compiler', 'Thread', 'Code', 'Internal',
+            'Logging', 'Arguments', 'Module', 'Synchronizer', 'Arguments',
+            'Native Memory Tracking'
+        ]
 
 
-function change(data) {
+        // var key = function(d){ return d.data.label + " (" + d.data.value + " KB)"; };
+        var key = function(d){ return d.data.key; };
 
-	/* ------- PIE SLICES -------*/
-	var slice = svg.select(".slices").selectAll("path.slice")
-		.data(pie(data), key);
+        var color = d3.scale.ordinal()
+            .domain(nmtDomains)
+            .range(["#ffd700",
+                "#ffb14e",
+                "#fa8775",
+                "#ea5f94",
+                "#cd34b5",
+                "#9d02d7",
+                "#0000ff",
+                "#000000"]);
 
-	slice.enter()
-		.insert("path")
-		.style("fill", function(d) { return color(d.data.label); })
-		.attr("class", "slice");
+        function displayNmtData(nmtData){
+            var labels = color.domain();
+            return labels.map(function(label){
+                var val = nmtData[label];
+                var key = label + " ( " + val + "KB)";
+                // var key = label;
+                return { label: label, key: key,  value: val }
+                // return { label: label, key: label + " (" + nmtData[label] + " KB)",  value: nmtData[label] }
+            });
+        }
 
-	slice		
-		.transition().duration(1000)
-		.attrTween("d", function(d) {
-			this._current = this._current || d;
-			var interpolate = d3.interpolate(this._current, d);
-			this._current = interpolate(0);
-			return function(t) {
-				return arc(interpolate(t));
-			};
-		})
+        function getData() {
+            d3.json('/process/nmt', function(nmtData) {
+                change(displayNmtData(nmtData));
+            });
+        }
 
-	slice.exit()
-		.remove();
+        getData();
+        setInterval(getData, 1000);
 
-	/* ------- TEXT LABELS -------*/
 
-	var text = svg.select(".labels").selectAll("text")
-		.data(pie(data), key);
+        function change(data) {
 
-	text.enter()
-		.append("text")
-		.attr("dy", ".35em")
-		.text(function(d) {
-		    // if(d.data.value == 'undefined' ||  d.data.value < 100) {
-            //     return "";
-            // }
-		    // else {
-                return d.data.label + " (" + d.data.value + " KB)";
-                // return d.data.key;
-            // }
-		});
-    function midAngle(d){
-		return d.startAngle + (d.endAngle - d.startAngle)/2;
-	}
+            /* ------- PIE SLICES -------*/
+            var slice = svg.select(".slices").selectAll("path.slice")
+                .data(pie(data), key);
 
-	text.transition().duration(1000)
-		.attrTween("transform", function(d) {
-			this._current = this._current || d;
-			var interpolate = d3.interpolate(this._current, d);
-			this._current = interpolate(0);
-			return function(t) {
-				var d2 = interpolate(t);
-				var pos = outerArc.centroid(d2);
-				pos[0] = radius * (midAngle(d2) < Math.PI ? 1 : -1);
-				return "translate("+ pos +")";
-			};
-		})
-		.styleTween("text-anchor", function(d){
-			this._current = this._current || d;
-			var interpolate = d3.interpolate(this._current, d);
-			this._current = interpolate(0);
-			return function(t) {
-				var d2 = interpolate(t);
-				return midAngle(d2) < Math.PI ? "start":"end";
-			};
-		});
+            slice.enter()
+                .insert("path")
+                .style("fill", function(d) { return color(d.data.label); })
+                .attr("class", "slice");
 
-	text.exit()
-		.remove();
+            slice
+                .transition().duration(1000)
+                .attrTween("d", function(d) {
+                    this._current = this._current || d;
+                    var interpolate = d3.interpolate(this._current, d);
+                    this._current = interpolate(0);
+                    return function(t) {
+                        return arc(interpolate(t));
+                    };
+                })
 
-	/* ------- SLICE TO TEXT POLYLINES -------*/
+            slice.exit()
+                .remove();
 
-	var polyline = svg.select(".lines").selectAll("polyline")
-		.data(pie(data), key);
-	
-	polyline.enter()
-		.append("polyline");
+            /* ------- TEXT LABELS -------*/
 
-	polyline.transition().duration(1000)
-		.attrTween("points", function(d){
-			this._current = this._current || d;
-			var interpolate = d3.interpolate(this._current, d);
-			this._current = interpolate(0);
-			return function(t) {
-				var d2 = interpolate(t);
-				var pos = outerArc.centroid(d2);
-				pos[0] = radius * 0.95 * (midAngle(d2) < Math.PI ? 1 : -1);
-				return [arc.centroid(d2), outerArc.centroid(d2), pos];
-			};			
-		});
-	
-	polyline.exit()
-		.remove();
-};
+            var text = svg.select(".labels").selectAll("text")
+                .data(pie(data), key);
 
-</script>
+            text.enter()
+                .append("text")
+                .attr("dy", ".35em")
+                .text(function(d) {
+                    // if(d.data.value == 'undefined' ||  d.data.value < 100) {
+                    //     return "";
+                    // }
+                    // else {
+                    return d.data.label + " (" + d.data.value + " KB)";
+                    // return d.data.key;
+                    // }
+                });
+            function midAngle(d){
+                return d.startAngle + (d.endAngle - d.startAngle)/2;
+            }
+
+            text.transition().duration(1000)
+                .attrTween("transform", function(d) {
+                    this._current = this._current || d;
+                    var interpolate = d3.interpolate(this._current, d);
+                    this._current = interpolate(0);
+                    return function(t) {
+                        var d2 = interpolate(t);
+                        var pos = outerArc.centroid(d2);
+                        pos[0] = radius * (midAngle(d2) < Math.PI ? 1 : -1);
+                        return "translate("+ pos +")";
+                    };
+                })
+                .styleTween("text-anchor", function(d){
+                    this._current = this._current || d;
+                    var interpolate = d3.interpolate(this._current, d);
+                    this._current = interpolate(0);
+                    return function(t) {
+                        var d2 = interpolate(t);
+                        return midAngle(d2) < Math.PI ? "start":"end";
+                    };
+                });
+
+            text.exit()
+                .remove();
+
+            /* ------- SLICE TO TEXT POLYLINES -------*/
+
+            var polyline = svg.select(".lines").selectAll("polyline")
+                .data(pie(data), key);
+
+            polyline.enter()
+                .append("polyline");
+
+            polyline.transition().duration(1000)
+                .attrTween("points", function(d){
+                    this._current = this._current || d;
+                    var interpolate = d3.interpolate(this._current, d);
+                    this._current = interpolate(0);
+                    return function(t) {
+                        var d2 = interpolate(t);
+                        var pos = outerArc.centroid(d2);
+                        pos[0] = radius * 0.95 * (midAngle(d2) < Math.PI ? 1 : -1);
+                        return [arc.centroid(d2), outerArc.centroid(d2), pos];
+                    };
+                });
+
+            polyline.exit()
+                .remove();
+        };
+
+    </script>
+
+</main>
+
+<script src="sidebars.js"></script>
 </body>

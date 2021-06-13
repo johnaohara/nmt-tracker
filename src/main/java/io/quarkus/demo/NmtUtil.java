@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -46,14 +47,44 @@ public class NmtUtil {
     };
 
     private AtomicReference<String> curProcessExpr = new AtomicReference<>();
+    private AtomicReference<String> dockerContainer = new AtomicReference<>();
+    private AtomicReference<String> dockerJavaPid = new AtomicReference<>();
+    private AtomicReference<Boolean> runNmt = new AtomicReference<>(true);
 
     @Inject
-    public NmtUtil(@ConfigProperty(name = "nvm-tracker.process-expr") Optional<String> processExpr) {
+    public NmtUtil(@ConfigProperty(name = "nvm-tracker.process-expr") Optional<String> processExpr,
+                   @ConfigProperty(name = "nvm-tracker.docker-container") Optional<String> dockerContainer) {
         this.curProcessExpr.set(processExpr.orElse(""));
+        this.dockerContainer.set(dockerContainer.orElse(""));
+        if(! "".equals(this.dockerContainer)){
+            getDockerContainerJavaPID();
+        }
     }
 
     public void updateProcessExpr(String newProcExpr){
         this.curProcessExpr.set(newProcExpr);
+    }
+
+    public void updateDockerContainer(String newDockerContainer){
+        this.dockerContainer.set(newDockerContainer);
+        getDockerContainerJavaPID();
+    }
+
+    private void getDockerContainerJavaPID(){
+        ProcessBuilder pidProcess = new ProcessBuilder("docker"
+                , "exec"
+                , this.dockerContainer.get()
+                , "ps"
+                , "-eaf"
+        );
+
+        processExecutor(pidProcess, line -> {
+            LOG.trace(line);
+            if (line.contains("java")) {
+                String pid = line.split("\\s+")[1];
+                dockerJavaPid.set(pid);
+            }
+        });
     }
 
     public List<Long> getPids() {
@@ -70,21 +101,44 @@ public class NmtUtil {
     }
 
     public Map<String, Long> getProcessNmtSections() {
-        List<Long> quarkusPids = getPids();
+//        List<Long> quarkusPids = getPids();
+//
+//        if (quarkusPids.size() < 1){
+//            LOG.error("Could not find process to track!");
+//            return null;
+//        }
+//        if ( quarkusPids.size() > 1) {
+//            LOG.error("Too many process running, could not determine which process to track!");
+//            return null;
+//        }
 
-        if (quarkusPids.size() < 1){
-            LOG.error("Could not find process to track!");
-            return null;
+        if( runNmt.get() && dockerJavaPid != null && dockerJavaPid.get() != null) {
+
+            NmtUtil.NmtParser nmtParser = new NmtUtil.NmtParser();
+
+            ProcessBuilder jcmdProcess = new ProcessBuilder("docker"
+                    , "exec"
+                    , this.dockerContainer.get()
+                    , "jcmd"
+                    , dockerJavaPid.get()
+                    , "VM.native_memory"
+            );
+
+            processExecutor(jcmdProcess, line -> {
+                LOG.trace(line);
+                try {
+                    nmtParser.parseLine(line);
+                } catch (NmtLineParseException nmtLineParseException) {
+                    LOG.warnf("There was a problem parsing the following line: `%s`", line);
+                }
+            });
+
+            return nmtParser.getNmtSections();
         }
-        if ( quarkusPids.size() > 1) {
-            LOG.error("Too many process running, could not determine which process to track!");
-            return null;
-        }
+        return null;
+    }
 
-        NmtUtil.NmtParser nmtParser = new NmtUtil.NmtParser();
-
-        ProcessBuilder jcmdProcess = new ProcessBuilder("jcmd", quarkusPids.get(0).toString(), "VM.native_memory");
-
+    private void processExecutor(ProcessBuilder jcmdProcess, Consumer<String> lineConsumer){
         Process p = null;
         BufferedReader reader = null;
         try {
@@ -94,13 +148,7 @@ public class NmtUtil {
             reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
-                LOG.trace(line);
-                try {
-                    nmtParser.parseLine(line);
-                } catch (NmtLineParseException nmtLineParseException) {
-                    LOG.warnf("There was a problem parsing the following line: `%s`", line);
-                }
-
+                lineConsumer.accept(line);
             }
         } catch (IOException exception) {
             LOG.errorf("IOException occurred obtaining native memory tracking data: %s", exception.getMessage());
@@ -122,8 +170,18 @@ public class NmtUtil {
                 }
             }
         }
-        return nmtParser.getNmtSections();
+
     }
+
+    public void stopNmt() {
+        this.runNmt.set(false);
+    }
+
+    public void startNmt() {
+        this.runNmt.set(true);
+    }
+
+
 
     public class NmtParser {
 
