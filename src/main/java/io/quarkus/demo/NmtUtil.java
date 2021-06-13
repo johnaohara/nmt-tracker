@@ -5,6 +5,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -19,6 +20,9 @@ public class NmtUtil {
 
     private static final Logger LOG = Logger.getLogger(NmtUtil.class);
 
+    private static final Pattern _COMITTED_PATTERN = Pattern.compile("committed=(.*?)KB");
+    private static final Pattern _RESERVED_PATTERN = Pattern.compile("reserved=(.*?)KB");
+    private static final String _KB = "KB";
 
     private static String[] sections = {"File Name"
             , "Java Heap"
@@ -41,8 +45,16 @@ public class NmtUtil {
             , "Total"
     };
 
-    @ConfigProperty(name = "nvm-tracker.process-expr")
-    Optional<String> processExpr;
+    private AtomicReference<String> curProcessExpr = new AtomicReference<>();
+
+    @Inject
+    public NmtUtil(@ConfigProperty(name = "nvm-tracker.process-expr") Optional<String> processExpr) {
+        this.curProcessExpr.set(processExpr.orElse(""));
+    }
+
+    public void updateProcessExpr(String newProcExpr){
+        this.curProcessExpr.set(newProcExpr);
+    }
 
     public List<Long> getPids() {
 
@@ -51,7 +63,7 @@ public class NmtUtil {
         ProcessHandle.current().parent().ifPresent(processHandle -> parentPid.set(processHandle.pid()));
 
         return ProcessHandle.allProcesses()
-                .filter(process -> process.info().commandLine().orElse("").matches(processExpr.orElse("")))
+                .filter(process -> process.info().commandLine().orElse("").matches(curProcessExpr.get()))
                 .filter(process -> process.pid() != curPID && process.pid() != parentPid.get())
                 .map(process -> process.pid())
                 .collect(Collectors.toList());
@@ -61,7 +73,7 @@ public class NmtUtil {
         List<Long> quarkusPids = getPids();
 
         if (quarkusPids.size() < 1){
-            LOG.warn("Could not find process to track!");
+            LOG.error("Could not find process to track!");
             return null;
         }
         if ( quarkusPids.size() > 1) {
@@ -91,7 +103,7 @@ public class NmtUtil {
 
             }
         } catch (IOException exception) {
-            LOG.errorf("IOException occurred obtaining native image data: %s", exception.getMessage());
+            LOG.errorf("IOException occurred obtaining native memory tracking data: %s", exception.getMessage());
         } finally {
             if (p != null) {
                 try {
@@ -122,7 +134,7 @@ public class NmtUtil {
         }
 
         public void parseLine(String line) throws NmtLineParseException {
-            if (line.contains("KB")) {
+            if (line.contains(_KB)) {
                 List<String> matchedSections = Arrays.stream(sections).filter(section -> line.contains(section)).collect(Collectors.toList());
                 if (matchedSections.size() > 1) {
                     throw new NmtLineParseException("Matched multiple sections");
@@ -130,8 +142,8 @@ public class NmtUtil {
                 if (matchedSections.size() < 1) {
                     LOG.debugf("Did not match any sections for %s\n", line);
                 } else {
-                    Pattern pattern = Pattern.compile("committed=(.*?)KB");
-                    Matcher matcher = pattern.matcher(line);
+
+                    Matcher matcher = _COMITTED_PATTERN.matcher(line);
                     if (matcher.find()) {
                         nmtSections.put(matchedSections.get(0), Long.valueOf(matcher.group(1)));
                     }
