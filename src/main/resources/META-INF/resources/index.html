@@ -50,13 +50,13 @@
                 <div class="collapse show" id="dashboard-collapse">
                     <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                         <li><button class="btn align-items-center rounded" onclick="changeRuntime('quarkus-todo')">
-                            Quarkus
+                            Quarkus 1.13.7.Final
                         </button></li>
                         <li><button class="btn align-items-center rounded" onclick="changeRuntime('wildfly-todo')">
-                            Wildfly 23
+                            Wildfly 23.0.2.Final
                         </button></li>
                         <li><button class="btn align-items-center rounded" onclick="changeRuntime('spring-todo')">
-                            Spring Boot
+                            Spring Boot 2.5.1
                         </button></li>
                     </ul>
                 </div>
@@ -65,7 +65,21 @@
     </div>
 
     <div class="b-example-divider"></div>
-    <div id="chart" style="height: 1000px;"> </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-sm">
+                <h1><div>Tracking: <div id="currentRuntime" style="display: inline">&nbsp;</div></div></h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm">
+                <div class="col-sm">
+                    <div id="chart" style="height: 1000px; width: 100%"> </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr>
 
     <script src="https://d3js.org/d3.v3.min.js"></script>
     <script>
@@ -85,6 +99,7 @@
             Http.onreadystatechange = (e) => {
                 console.log(Http.responseText)
             }
+            document.getElementById("currentRuntime").innerText=runtime;
         }
 
         var startStopNmt = function(startStop){
