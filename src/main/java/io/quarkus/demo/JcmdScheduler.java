@@ -29,10 +29,8 @@ class JcmdScheduler {
 //                nmtRepository.updateLogs(results)
 //        );
 
-        nmtUtil.getHostPID(hostPid ->
-                nmtUtil.getPmap(hostPid, result ->
-                        nmtRepository.updatePmap(result)
-                )
+        nmtUtil.getPmap(result ->
+                nmtRepository.updatePmap(result)
         );
 
 //        nmtUtil.getDockerStats(stats ->

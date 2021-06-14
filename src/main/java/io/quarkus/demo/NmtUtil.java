@@ -197,15 +197,19 @@ public class NmtUtil {
 
     }
 
-    public void getPmap(String hostPid, Consumer<List<String>> resultConsumer){
+    public void getPmap(Consumer<List<String>> resultConsumer){
         vertx.<List<String>>executeBlocking(fut -> {
                     if (runNmt.get() && dockerJavaPid != null && dockerJavaPid.get() != null) {
                         List<String> pmapOutput = new ArrayList();
 
-                        ProcessBuilder jcmdProcess = new ProcessBuilder("sudo"
-                                , "pmap"
+                        ProcessBuilder jcmdProcess = new ProcessBuilder(
+//                                "sudo"
+                                 "docker"
+                                , "exec"
+                                , dockerContainer.get()
+                                ,"pmap"
                                 , "-x"
-                                , hostPid
+                                , dockerJavaPid.get()
                         );
 
                         processExecutor(jcmdProcess, line -> {
@@ -221,7 +225,7 @@ public class NmtUtil {
                     if (results.succeeded()) {
                         resultConsumer.accept(results.result());
                     } else {
-                        LOG.error(results.cause());
+                        LOG.debug(results.cause());
                     }
                 });
     }
@@ -258,7 +262,7 @@ public class NmtUtil {
                     if (results.succeeded()) {
                         resultConsumer.accept(results.result());
                     } else {
-                        LOG.error(results.cause());
+                        LOG.debug(results.cause());
                     }
                 });
     }
