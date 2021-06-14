@@ -111,17 +111,122 @@ public class NmtUtil {
                 .collect(Collectors.toList());
     }
 
-    public void getProcessNmtSections(Consumer<Map<String, Long>> resultConsumer) {
-//        List<Long> quarkusPids = getPids();
-//
-//        if (quarkusPids.size() < 1){
-//            LOG.error("Could not find process to track!");
-//            return null;
-//        }
-//        if ( quarkusPids.size() > 1) {
-//            LOG.error("Too many process running, could not determine which process to track!");
-//            return null;
-//        }
+    public void getProcessLogs(Consumer<List<String>> resultConsumer) {
+        vertx.<List<String>>executeBlocking(fut -> {
+                    if (runNmt.get() && dockerJavaPid != null && dockerJavaPid.get() != null) {
+                        List<String> logs = new ArrayList();
+
+                        ProcessBuilder jcmdProcess = new ProcessBuilder("docker"
+                                , "logs"
+                                , this.dockerContainer.get()
+                        );
+
+                        processExecutor(jcmdProcess, line -> {
+                            LOG.trace(line);
+                            logs.add(line);
+                        });
+                        fut.complete(logs);
+                    } else {
+                        fut.fail("Unable to parse jcmd result");
+                    }
+                },
+                results -> {
+                    if (results.succeeded()) {
+                        resultConsumer.accept(results.result());
+                    } else {
+                        LOG.error(results.cause());
+                    }
+                });
+    }
+
+    public void getDockerStats(Consumer<List<String>> statsConsumer){
+        vertx.<List<String>>executeBlocking(fut -> {
+            if (runNmt.get() && dockerJavaPid != null && dockerJavaPid.get() != null) {
+                List<String> statsOutput = new ArrayList();
+
+                ProcessBuilder jcmdProcess = new ProcessBuilder("docker"
+                        , "stats"
+                        , this.dockerContainer.get()
+                );
+
+                processExecutor(jcmdProcess, line -> {
+                    LOG.trace(line);
+                    statsOutput.add(line);
+                });
+                fut.complete(statsOutput);
+            } else {
+                fut.fail("Unable to parse jcmd result");
+            }
+                },
+                results -> {
+                    if (results.succeeded()) {
+                        statsConsumer.accept(results.result());
+                    } else {
+                        LOG.error(results.cause());
+                    }
+                });
+    }
+
+    public void getHostPID(Consumer<String> resultConsumer) {
+        vertx.<String>executeBlocking(fut -> {
+            if (runNmt.get() && dockerJavaPid != null && dockerJavaPid.get() != null) {
+                AtomicReference<String> hostPid = new AtomicReference<>("");
+                ProcessBuilder jcmdProcess = new ProcessBuilder("docker"
+                        , "top"
+                        , this.dockerContainer.get()
+                );
+
+                processExecutor(jcmdProcess, line -> {
+                    LOG.trace(line);
+                    if(line.contains("java")){
+                        hostPid.set(line.split("\\s+")[1]);
+                    }
+                });
+                fut.complete(hostPid.get());
+            } else {
+                fut.fail("Unable to parse jcmd result");
+            }
+                },
+                results -> {
+                    if (results.succeeded()) {
+                        resultConsumer.accept(results.result());
+                    } else {
+                        LOG.error(results.cause());
+                    }
+                });
+
+    }
+
+    public void getPmap(String hostPid, Consumer<List<String>> resultConsumer){
+        vertx.<List<String>>executeBlocking(fut -> {
+                    if (runNmt.get() && dockerJavaPid != null && dockerJavaPid.get() != null) {
+                        List<String> pmapOutput = new ArrayList();
+
+                        ProcessBuilder jcmdProcess = new ProcessBuilder("sudo"
+                                , "pmap"
+                                , "-x"
+                                , hostPid
+                        );
+
+                        processExecutor(jcmdProcess, line -> {
+                            LOG.trace(line);
+                            pmapOutput.add(line);
+                        });
+                        fut.complete(pmapOutput);
+                    } else {
+                        fut.fail("Unable to parse jcmd result");
+                    }
+                },
+                results -> {
+                    if (results.succeeded()) {
+                        resultConsumer.accept(results.result());
+                    } else {
+                        LOG.error(results.cause());
+                    }
+                });
+    }
+
+        public void getProcessNmtSections(Consumer<Map<String, Long>> resultConsumer) {
         vertx.<Map<String, Long>>executeBlocking(fut -> {
                     if (runNmt.get() && dockerJavaPid != null && dockerJavaPid.get() != null) {
 

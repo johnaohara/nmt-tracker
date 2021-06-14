@@ -15,13 +15,29 @@ class JcmdScheduler {
     NmtUtil nmtUtil;
 
     @Inject
-    NmtRepository nmtRepository;
+    ProcessRepository nmtRepository;
 
-    @Scheduled(every = "0.5s", identity = "Jcmd-job")
-    void schedule() {
+
+    @Scheduled(every = "1s", identity = "nmt-job")
+    void scheduleNmt() {
         LOG.debug("Running JCMD");
-        nmtUtil.getProcessNmtSections(results -> nmtRepository.updateNmtDate(results));
-        ;
+        nmtUtil.getProcessNmtSections(results ->
+                nmtRepository.updateNmtDate(results)
+        );
+
+//        nmtUtil.getProcessLogs(results ->
+//                nmtRepository.updateLogs(results)
+//        );
+
+        nmtUtil.getHostPID(hostPid ->
+                nmtUtil.getPmap(hostPid, result ->
+                        nmtRepository.updatePmap(result)
+                )
+        );
+
+//        nmtUtil.getDockerStats(stats ->
+//            nmtRepository.updateDockerStats(stats)
+//        );
 
     }
 }

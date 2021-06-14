@@ -16,7 +16,7 @@ public class MemoryResource {
     NmtUtil nmtUtil;
 
     @Inject
-    NmtRepository nmtRepository;
+    ProcessRepository nmtRepository;
 
     @GET
     @Path("/pids")
@@ -34,6 +34,26 @@ public class MemoryResource {
             throw new Exception("Could not determine pid of exactly 1 process!");
         }
         return pids.get(0);
+    }
+
+    @GET
+    @Path("/logs")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<String> getLogs() throws Exception {
+        return nmtRepository.getLogs();
+    }
+
+    @GET
+    @Path("/pmap")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<String> getPmap() throws Exception {
+        return nmtRepository.getPmap();
+    }
+    @GET
+    @Path("/stats")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<String> getDockerStats() throws Exception {
+        return nmtRepository.getStats();
     }
 
     @GET
