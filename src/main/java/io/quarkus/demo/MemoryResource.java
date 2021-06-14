@@ -69,7 +69,7 @@ public class MemoryResource {
     @Produces(MediaType.APPLICATION_JSON)
     public String stopNmt() throws Exception {
         nmtUtil.stopNmt();
-        return "{Response: ok}";
+        return "{'Response': 'ok'}";
     }
 
 
@@ -78,7 +78,7 @@ public class MemoryResource {
     @Produces(MediaType.APPLICATION_JSON)
     public String startNmt() throws Exception {
         nmtUtil.startNmt();
-        return "{Response: ok}";
+        return "{'Response': 'ok'}";
     }
 
     @GET
