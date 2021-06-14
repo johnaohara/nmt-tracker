@@ -20,7 +20,8 @@ class JcmdScheduler {
     @Scheduled(every = "0.5s", identity = "Jcmd-job")
     void schedule() {
         LOG.debug("Running JCMD");
-        nmtRepository.updateNmtDate(nmtUtil.getProcessNmtSections());
+        nmtUtil.getProcessNmtSections(results -> nmtRepository.updateNmtDate(results));
+        ;
 
     }
 }

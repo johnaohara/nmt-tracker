@@ -1,6 +1,7 @@
 package io.quarkus.demo;
 
 import io.quarkus.demo.err.NmtLineParseException;
+import io.vertx.core.Vertx;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
@@ -18,6 +19,8 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class NmtUtil {
+
+    Vertx vertx;
 
     private static final Logger LOG = Logger.getLogger(NmtUtil.class);
 
@@ -53,38 +56,46 @@ public class NmtUtil {
 
     @Inject
     public NmtUtil(@ConfigProperty(name = "nvm-tracker.process-expr") Optional<String> processExpr,
-                   @ConfigProperty(name = "nvm-tracker.docker-container") Optional<String> dockerContainer) {
+                   @ConfigProperty(name = "nvm-tracker.docker-container") Optional<String> dockerContainer,
+                   Vertx vertx) {
         this.curProcessExpr.set(processExpr.orElse(""));
         this.dockerContainer.set(dockerContainer.orElse(""));
-        if(! "".equals(this.dockerContainer)){
+        this.vertx = vertx;
+        if (!"".equals(this.dockerContainer)) {
             getDockerContainerJavaPID();
         }
     }
 
-    public void updateProcessExpr(String newProcExpr){
+    public void updateProcessExpr(String newProcExpr) {
         this.curProcessExpr.set(newProcExpr);
     }
 
-    public void updateDockerContainer(String newDockerContainer){
+    public void updateDockerContainer(String newDockerContainer) {
         this.dockerContainer.set(newDockerContainer);
         getDockerContainerJavaPID();
     }
 
-    private void getDockerContainerJavaPID(){
-        ProcessBuilder pidProcess = new ProcessBuilder("docker"
-                , "exec"
-                , this.dockerContainer.get()
-                , "ps"
-                , "-eaf"
-        );
+    private void getDockerContainerJavaPID() {
+        vertx.executeBlocking(fut -> {
+                    ProcessBuilder pidProcess = new ProcessBuilder("docker"
+                            , "exec"
+                            , this.dockerContainer.get()
+                            , "ps"
+                            , "-eaf"
+                    );
 
-        processExecutor(pidProcess, line -> {
-            LOG.trace(line);
-            if (line.contains("java")) {
-                String pid = line.split("\\s+")[1];
-                dockerJavaPid.set(pid);
-            }
-        });
+                    processExecutor(pidProcess, line -> {
+                        LOG.trace(line);
+                        if (line.contains("java")) {
+                            String pid = line.split("\\s+")[1];
+                            dockerJavaPid.set(pid);
+                        }
+                    });
+                    fut.complete();
+                },
+                result -> {
+                    LOG.trace("Finsihed getting PID");
+                });
     }
 
     public List<Long> getPids() {
@@ -100,7 +111,7 @@ public class NmtUtil {
                 .collect(Collectors.toList());
     }
 
-    public Map<String, Long> getProcessNmtSections() {
+    public void getProcessNmtSections(Consumer<Map<String, Long>> resultConsumer) {
 //        List<Long> quarkusPids = getPids();
 //
 //        if (quarkusPids.size() < 1){
@@ -111,34 +122,43 @@ public class NmtUtil {
 //            LOG.error("Too many process running, could not determine which process to track!");
 //            return null;
 //        }
+        vertx.<Map<String, Long>>executeBlocking(fut -> {
+                    if (runNmt.get() && dockerJavaPid != null && dockerJavaPid.get() != null) {
 
-        if( runNmt.get() && dockerJavaPid != null && dockerJavaPid.get() != null) {
+                        NmtUtil.NmtParser nmtParser = new NmtUtil.NmtParser();
 
-            NmtUtil.NmtParser nmtParser = new NmtUtil.NmtParser();
+                        ProcessBuilder jcmdProcess = new ProcessBuilder("docker"
+                                , "exec"
+                                , this.dockerContainer.get()
+                                , "jcmd"
+                                , dockerJavaPid.get()
+                                , "VM.native_memory"
+                        );
 
-            ProcessBuilder jcmdProcess = new ProcessBuilder("docker"
-                    , "exec"
-                    , this.dockerContainer.get()
-                    , "jcmd"
-                    , dockerJavaPid.get()
-                    , "VM.native_memory"
-            );
+                        processExecutor(jcmdProcess, line -> {
+                            LOG.trace(line);
+                            try {
+                                nmtParser.parseLine(line);
+                            } catch (NmtLineParseException nmtLineParseException) {
+                                LOG.warnf("There was a problem parsing the following line: `%s`", line);
+                            }
+                        });
+                        fut.complete(nmtParser.getNmtSections());
+                    } else {
+                        fut.fail("Unable to parse jcmd result");
+                    }
 
-            processExecutor(jcmdProcess, line -> {
-                LOG.trace(line);
-                try {
-                    nmtParser.parseLine(line);
-                } catch (NmtLineParseException nmtLineParseException) {
-                    LOG.warnf("There was a problem parsing the following line: `%s`", line);
-                }
-            });
-
-            return nmtParser.getNmtSections();
-        }
-        return null;
+                },
+                results -> {
+                    if (results.succeeded()) {
+                        resultConsumer.accept(results.result());
+                    } else {
+                        LOG.error(results.cause());
+                    }
+                });
     }
 
-    private void processExecutor(ProcessBuilder jcmdProcess, Consumer<String> lineConsumer){
+    private void processExecutor(ProcessBuilder jcmdProcess, Consumer<String> lineConsumer) {
         Process p = null;
         BufferedReader reader = null;
         try {
@@ -180,7 +200,6 @@ public class NmtUtil {
     public void startNmt() {
         this.runNmt.set(true);
     }
-
 
 
     public class NmtParser {
