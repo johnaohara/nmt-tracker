@@ -49,7 +49,7 @@ public class NmtUtil {
     private AtomicReference<String> curProcessExpr = new AtomicReference<>();
     private AtomicReference<String> dockerContainer = new AtomicReference<>();
     private AtomicReference<String> dockerJavaPid = new AtomicReference<>();
-    private AtomicReference<Boolean> runNmt = new AtomicReference<>(true);
+    private AtomicReference<Boolean> runNmt = new AtomicReference<>(false);
 
     @Inject
     public NmtUtil(@ConfigProperty(name = "nvm-tracker.process-expr") Optional<String> processExpr,
