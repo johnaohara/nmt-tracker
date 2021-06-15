@@ -106,10 +106,17 @@ public class DockerEnvironment extends AbstractEnvironment {
                 )
                 , procs -> {
                     List<String> filterdProcs = procs.stream().filter(proc -> proc.contains("java")).collect(Collectors.toList());
+                    if(filterdProcs.size() == 1){
+                        javaPid.set(filterdProcs.get(0).split("\\s+")[1]);
+                    }
                     if(filterdProcs.size() > 1){
+                        javaPid.set("0");
                         LOG.error("Found more than one java process running in container: ".concat(this.curProcessExpr.get()));
                     }
-                    javaPid.set(filterdProcs.get(0).split("\\s+")[1]);
+                    if(filterdProcs.size() == 0){
+                        javaPid.set("0");
+                        LOG.error("Could not find a java process running in container: ".concat(this.curProcessExpr.get()));
+                    }
                 });
     }
 }
