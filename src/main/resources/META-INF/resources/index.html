@@ -51,23 +51,11 @@
                         data-bs-target="#dashboard-collapse" aria-expanded="false">
                     Runtimes
                 </button>
+                <button class="btn " onclick="refreshRuntimes()">
+                    Refresh
+                </button>
                 <div class="collapse show" id="dashboard-collapse">
-                    <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                        <li>
-                            <button class="btn align-items-center rounded" onclick="changeRuntime('quarkus-todo')">
-                                Quarkus 1.13.7.Final
-                            </button>
-                        </li>
-                        <li>
-                            <button class="btn align-items-center rounded" onclick="changeRuntime('wildfly-todo')">
-                                Wildfly 23.0.2.Final
-                            </button>
-                        </li>
-                        <li>
-                            <button class="btn align-items-center rounded" onclick="changeRuntime('spring-todo')">
-                                Spring Boot 2.5.1
-                            </button>
-                        </li>
+                    <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small" id="runtimes-list">
                     </ul>
                 </div>
             </li>

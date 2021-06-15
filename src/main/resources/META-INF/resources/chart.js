@@ -17,16 +17,13 @@ var refreshPmap = function(){
     var pmapText = document.getElementById("pmap");
     pmapText.value = '';
 
-    fetch('process/pmap')
+    fetch('stats/pmap')
         .then(response => response.json())
         .then(arr => {
 
             arr.forEach(element => {
                 pmapText.value +=  element + '\r\n';
 
-                // var todoEle = document.createElement("pmap-line");
-                // todoEle.innerText = element;
-                // todos.appendChild(todoEle);
             });
         })
         .catch(err => console.error(err));
@@ -37,9 +34,29 @@ var toggleTracking = function(){
     startStopNmt(tracking.checked ? 'start' : 'stop')
 }
 
+var refreshRuntimes = function(){
+    var runtimes = document.getElementById("runtimes-list");
+    runtimes.innerHTML = '';
+
+    fetch('stats/processes')
+        .then(response => response.json())
+        .then(arr => {
+
+            arr.forEach(runtime => {
+                runtimes.innerHTML += '<li>' +
+                    '<button class="btn align-items-center rounded" onclick="changeRuntime(\'' + runtime + '\')">' +
+                    runtime +
+                    '</button>' +
+                    '</li>';
+            });
+        })
+        .catch(err => console.error(err));
+
+}
+
 var changeRuntime = function(runtime){
     const Http = new XMLHttpRequest();
-    const url='/process/container/'+runtime;
+    const url='/control/processExpr/'+runtime;
     Http.open("GET", url);
     Http.send();
 
@@ -51,7 +68,7 @@ var changeRuntime = function(runtime){
 
 var startStopNmt = function(startStop){
     const Http = new XMLHttpRequest();
-    const url='/process/nmt/'+startStop;
+    const url='/control/nmt/'+startStop;
     Http.open("GET", url);
     Http.send();
 
@@ -64,7 +81,7 @@ var getLogs = function(){
     var logsText = document.getElementById("logs");
     logsText.innerHTML = '';
 
-    fetch('process/logs')
+    fetch('control/logs')
         .then(response => response.json())
         .then(arr => {
 
@@ -149,11 +166,12 @@ function displayNmtData(nmtData){
 }
 
 function getData() {
-    d3.json('/process/nmt', function(nmtData) {
+    d3.json('/stats/nmt', function(nmtData) {
         change(displayNmtData(nmtData));
     });
 }
 
+refreshRuntimes();
 getData();
 setInterval(getData, 1000);
 
