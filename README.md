@@ -1,30 +1,49 @@
 # nmt-visualizer project
 
-NativeMemoryTracking visualizer for visually inspecting OpenJDK native memory usage.
+NativeMemoryTracking visualizer for visually inspecting OpenJDK native memory usage for java applications running in containers
 
 This tool allows you to track the native memory allocations in realtime for a Java application that has been started with `-XX:NativeMemoryTracking=[summary|detail]` 
 
 
-## Packaging and running the application
+## Quickstart
+
+Create a docker image for your application that has Native Memory Tracking enabled, e.g.;
+
+```dockerfile
+FROM registry.access.redhat.com/ubi8/openjdk-11:1.3-15
+
+COPY --chown=1001 target/quarkus-app/lib/ /deployments/lib/
+COPY --chown=1001 target/quarkus-app/*.jar /deployments/
+COPY --chown=1001 target/quarkus-app/app/ /deployments/app/
+COPY --chown=1001 target/quarkus-app/quarkus/ /deployments/quarkus/
+
+EXPOSE 8081
+USER 1001
+
+CMD [ "java", "-XX:NativeMemoryTracking=summary", "-Dquarkus.http.port=8082", "-Xmx128m", "-jar", "/deployments/quarkus-run.jar" ]
+
+```
+
+Start NMT Tracker
+
+```shell
+$ docker run -it --rm --privileged --network host --name nmt-tracker -v /var/run/docker.sock:/var/run/docker.sock quay.io/johara/nmt-tracker
+```
+
+Navigate to `http://localhost:8081` to visualize the Native Memory details;
+
+![NMT-visualizer](https://github.com/johnaohara/nmt-tracker/blob/main/nmt-overview.png?raw=true)
+
+
+
+## Building from source
 
 The application can be packaged using:
 ```shell script
 ./mvnw package -Dquarkus.package.type=uber-jar
 ```
 
-Start the application you wish to trace with `-XX:NativeMemoryTracking=summary` enabled, e.g.
-
-```shell script
-java -XX:NativeMemoryTracking=summary -jar some/other/quarkus-app/quarkus-run.jar
+The nmt-visualizer is now runnable using
 ```
-
-The nmt-visualizer is now runnable using 
-```
-java -Dnvm-tracker.process-expr=.*/quarkus-run-jar.*  -jar  target/nmt-tracker-runner.jar `.
+java -jar  target/nmt-tracker-runner.jar `.
 ``` 
-
-Where `-Dnvm-tracker.process-expr=` is a regex of the running process to track.
-
-Navigate to `http://localhost:8081` to visualize the Native Memory details;
-
-![NMT-visualizer](https://github.com/johnaohara/nmt-tracker/blob/main/nmt-overview.png?raw=true)
