@@ -27,10 +27,10 @@ CMD [ "java", "-XX:NativeMemoryTracking=summary", "-Dquarkus.http.port=8082", "-
 Start NMT Tracker
 
 ```shell
-$ docker run -it --rm --privileged --network host --name nmt-tracker -v /var/run/docker.sock:/var/run/docker.sock quay.io/johara/nmt-tracker
+$ docker run -it --rm --name nmt-tracker -p 8090:8081 -v /var/run/docker.sock:/var/run/docker.sock  quay.io/johara/nmt-tracker
 ```
 
-Navigate to `http://localhost:8081` to visualize the Native Memory details;
+Navigate to `http://localhost:8090` to visualize the Native Memory details;
 
 ![NMT-visualizer](https://github.com/johnaohara/nmt-tracker/blob/main/nmt-overview.png?raw=true)
 
